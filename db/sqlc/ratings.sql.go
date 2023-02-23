@@ -7,23 +7,24 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createRating = `-- name: CreateRating :one
-INSERT INTO ratings(
-                    score,
-                    user_username,
-                    movie_id
-
-) values (
-             10,
-          "thottel",
-          1
-         ) RETURNING id, score, user_username, movie_id
+INSERT INTO
+    ratings (score, movie_id, user_username)
+VALUES
+    ($1, $2, $3) RETURNING id, score, user_username, movie_id
 `
 
-func (q *Queries) CreateRating(ctx context.Context) (Rating, error) {
-	row := q.db.QueryRowContext(ctx, createRating)
+type CreateRatingParams struct {
+	Score        sql.NullInt32  `json:"score"`
+	MovieID      sql.NullInt32  `json:"movie_id"`
+	UserUsername sql.NullString `json:"user_username"`
+}
+
+func (q *Queries) CreateRating(ctx context.Context, arg CreateRatingParams) (Rating, error) {
+	row := q.db.QueryRowContext(ctx, createRating, arg.Score, arg.MovieID, arg.UserUsername)
 	var i Rating
 	err := row.Scan(
 		&i.ID,
@@ -34,29 +35,31 @@ func (q *Queries) CreateRating(ctx context.Context) (Rating, error) {
 	return i, err
 }
 
-const deleteRating = `-- name: DeleteRating :one
-DELETE from ratings where ratings.id = 1 RETURNING id, score, user_username, movie_id
+const deleteRating = `-- name: DeleteRating :exec
+DELETE FROM
+    ratings
+WHERE
+        id = $1
 `
 
-func (q *Queries) DeleteRating(ctx context.Context) (Rating, error) {
-	row := q.db.QueryRowContext(ctx, deleteRating)
-	var i Rating
-	err := row.Scan(
-		&i.ID,
-		&i.Score,
-		&i.UserUsername,
-		&i.MovieID,
-	)
-	return i, err
+func (q *Queries) DeleteRating(ctx context.Context, id int32) error {
+	_, err := q.db.ExecContext(ctx, deleteRating, id)
+	return err
 }
 
 const getRating = `-- name: GetRating :one
-SELECT id, score, user_username, movie_id FROM ratings
-where ratings.movie_id = 1 LIMIT 1
+SELECT
+    id, score, user_username, movie_id
+FROM
+    ratings
+WHERE
+        id = $1
+    LIMIT
+  1
 `
 
-func (q *Queries) GetRating(ctx context.Context) (Rating, error) {
-	row := q.db.QueryRowContext(ctx, getRating)
+func (q *Queries) GetRating(ctx context.Context, id int32) (Rating, error) {
+	row := q.db.QueryRowContext(ctx, getRating, id)
 	var i Rating
 	err := row.Scan(
 		&i.ID,
@@ -67,13 +70,19 @@ func (q *Queries) GetRating(ctx context.Context) (Rating, error) {
 	return i, err
 }
 
-const listRatingByMovie = `-- name: ListRatingByMovie :many
-SELECT id, score, user_username, movie_id FROM ratings
-where ratings.movie_id = 1
+const listRatingsByMovie = `-- name: ListRatingsByMovie :many
+SELECT
+    id, score, user_username, movie_id
+FROM
+    ratings
+WHERE
+        movie_id = $1
+ORDER BY
+    created_at DESC
 `
 
-func (q *Queries) ListRatingByMovie(ctx context.Context) ([]Rating, error) {
-	rows, err := q.db.QueryContext(ctx, listRatingByMovie)
+func (q *Queries) ListRatingsByMovie(ctx context.Context, movieID sql.NullInt32) ([]Rating, error) {
+	rows, err := q.db.QueryContext(ctx, listRatingsByMovie, movieID)
 	if err != nil {
 		return nil, err
 	}
@@ -101,11 +110,18 @@ func (q *Queries) ListRatingByMovie(ctx context.Context) ([]Rating, error) {
 }
 
 const listRatingsByUser = `-- name: ListRatingsByUser :many
-SELECT id, score, user_username, movie_id FROM ratings WHERE ratings.user_username = "thottel"
+SELECT
+    id, score, user_username, movie_id
+FROM
+    ratings
+WHERE
+        user_username = $1
+ORDER BY
+    created_at DESC
 `
 
-func (q *Queries) ListRatingsByUser(ctx context.Context) ([]Rating, error) {
-	rows, err := q.db.QueryContext(ctx, listRatingsByUser)
+func (q *Queries) ListRatingsByUser(ctx context.Context, userUsername sql.NullString) ([]Rating, error) {
+	rows, err := q.db.QueryContext(ctx, listRatingsByUser, userUsername)
 	if err != nil {
 		return nil, err
 	}
@@ -132,21 +148,21 @@ func (q *Queries) ListRatingsByUser(ctx context.Context) ([]Rating, error) {
 	return items, nil
 }
 
-const updateRating = `-- name: UpdateRating :one
-UPDATE ratings
-SET ratings.score = 9
-WHERE ratings.movie_id = 1
-RETURNING id, score, user_username, movie_id
+const updateRating = `-- name: UpdateRating :exec
+UPDATE
+    ratings
+SET
+    score = $1
+WHERE
+        id = $2 RETURNING id, score, user_username, movie_id
 `
 
-func (q *Queries) UpdateRating(ctx context.Context) (Rating, error) {
-	row := q.db.QueryRowContext(ctx, updateRating)
-	var i Rating
-	err := row.Scan(
-		&i.ID,
-		&i.Score,
-		&i.UserUsername,
-		&i.MovieID,
-	)
-	return i, err
+type UpdateRatingParams struct {
+	Score sql.NullInt32 `json:"score"`
+	ID    int32         `json:"id"`
+}
+
+func (q *Queries) UpdateRating(ctx context.Context, arg UpdateRatingParams) error {
+	_, err := q.db.ExecContext(ctx, updateRating, arg.Score, arg.ID)
+	return err
 }

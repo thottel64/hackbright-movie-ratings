@@ -1,20 +1,23 @@
 -- name: CreateUser :one
-INSERT INTO users(
-    username,
-    password,
-    email)
-    values(
-"thottel", "pword", "taylor.hottel@shipt.com"
-) RETURNING *;
+INSERT INTO
+    users (username, password, email)
+VALUES
+    ($1, $2, $3) RETURNING *;
 
--- name: SelectUser :one
-SELECT *
-from users
-WHERE users.username = "thottel" LIMIT 1;
+-- name: GetUser :one
+SELECT
+    *
+FROM
+    users
+WHERE
+        username = $1
+    LIMIT
+  1;
 
--- name: ListUsers :many
-SELECT * FROM users;
 
--- name: DeleteUser :one
-DELETE FROM users WHERE users.username = "thottel"
-RETURNING *;
+-- name: ListUser :many
+SELECT * FROM users
+                  LIMIT $1 OFFSET $2;
+
+-- name: DeleteUser :exec
+DELETE FROM users WHERE username = $1;

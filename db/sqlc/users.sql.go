@@ -10,40 +10,64 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users(
-    username,
-    password,
-    email)
-    values(
-"thottel", "pword", "taylor.hottel@shipt.com"
-) RETURNING username, password, email
+INSERT INTO
+    users (username, password, email)
+VALUES
+    ($1, $2, $3) RETURNING username, password, email
 `
 
-func (q *Queries) CreateUser(ctx context.Context) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser)
+type CreateUserParams struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Email    string `json:"email"`
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, createUser, arg.Username, arg.Password, arg.Email)
 	var i User
 	err := row.Scan(&i.Username, &i.Password, &i.Email)
 	return i, err
 }
 
-const deleteUser = `-- name: DeleteUser :one
-DELETE FROM users WHERE users.username = "thottel"
-RETURNING username, password, email
+const deleteUser = `-- name: DeleteUser :exec
+DELETE FROM users WHERE username = $1
 `
 
-func (q *Queries) DeleteUser(ctx context.Context) (User, error) {
-	row := q.db.QueryRowContext(ctx, deleteUser)
+func (q *Queries) DeleteUser(ctx context.Context, username string) error {
+	_, err := q.db.ExecContext(ctx, deleteUser, username)
+	return err
+}
+
+const getUser = `-- name: GetUser :one
+SELECT
+    username, password, email
+FROM
+    users
+WHERE
+        username = $1
+    LIMIT
+  1
+`
+
+func (q *Queries) GetUser(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUser, username)
 	var i User
 	err := row.Scan(&i.Username, &i.Password, &i.Email)
 	return i, err
 }
 
-const listUsers = `-- name: ListUsers :many
+const listUser = `-- name: ListUser :many
 SELECT username, password, email FROM users
+                  LIMIT $1 OFFSET $2
 `
 
-func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
-	rows, err := q.db.QueryContext(ctx, listUsers)
+type ListUserParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListUser(ctx context.Context, arg ListUserParams) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, listUser, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -63,17 +87,4 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 		return nil, err
 	}
 	return items, nil
-}
-
-const selectUser = `-- name: SelectUser :one
-SELECT username, password, email
-from users
-WHERE users.username = "thottel" LIMIT 1
-`
-
-func (q *Queries) SelectUser(ctx context.Context) (User, error) {
-	row := q.db.QueryRowContext(ctx, selectUser)
-	var i User
-	err := row.Scan(&i.Username, &i.Password, &i.Email)
-	return i, err
 }

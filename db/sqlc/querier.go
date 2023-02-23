@@ -6,23 +6,24 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
-	CreateMovie(ctx context.Context) (Movie, error)
-	CreateRating(ctx context.Context) (Rating, error)
-	CreateUser(ctx context.Context) (User, error)
-	DeleteMovie(ctx context.Context) (Movie, error)
-	DeleteRating(ctx context.Context) (Rating, error)
-	DeleteUser(ctx context.Context) (User, error)
-	GetMovieDetails(ctx context.Context) (Movie, error)
-	GetRating(ctx context.Context) (Rating, error)
-	ListMovies(ctx context.Context) ([]string, error)
-	ListRatingByMovie(ctx context.Context) ([]Rating, error)
-	ListRatingsByUser(ctx context.Context) ([]Rating, error)
-	ListUsers(ctx context.Context) ([]User, error)
-	SelectUser(ctx context.Context) (User, error)
-	UpdateRating(ctx context.Context) (Rating, error)
+	CreateMovie(ctx context.Context, arg CreateMovieParams) (Movie, error)
+	CreateRating(ctx context.Context, arg CreateRatingParams) (Rating, error)
+	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteMoive(ctx context.Context, id int32) error
+	DeleteRating(ctx context.Context, id int32) error
+	DeleteUser(ctx context.Context, username string) error
+	GetMovie(ctx context.Context, id int32) (Movie, error)
+	GetRating(ctx context.Context, id int32) (Rating, error)
+	GetUser(ctx context.Context, username string) (User, error)
+	ListMovies(ctx context.Context, id int32) ([]Movie, error)
+	ListRatingsByMovie(ctx context.Context, movieID sql.NullInt32) ([]Rating, error)
+	ListRatingsByUser(ctx context.Context, userUsername sql.NullString) ([]Rating, error)
+	ListUser(ctx context.Context, arg ListUserParams) ([]User, error)
+	UpdateRating(ctx context.Context, arg UpdateRatingParams) error
 }
 
 var _ Querier = (*Queries)(nil)

@@ -2,15 +2,19 @@ package db
 
 import (
 	"database/sql"
-	_ "github.com/lib/pq"
 	"log"
 	"os"
 	"os/exec"
 	"testing"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/lib/pq"
 )
 
 const dbDriver string = "postgres"
-const dbSource string = "postgresql:///ratings?sslmode=disable"
+const dbSource string = "postgresql:///test_ratings?sslmode=disable"
 const dbName string = "test_ratings"
 
 var db *sql.DB
@@ -22,6 +26,14 @@ func TestMain(m *testing.M) {
 	conn, err := sql.Open(dbDriver, dbSource)
 	if err != nil {
 		log.Fatalln("could not establish connection", err)
+	}
+	mig, err := migrate.New("file://../migrations", dbSource)
+	if err != nil {
+		log.Fatalln("error:", err)
+	}
+	err = mig.Up()
+	if err != nil {
+		log.Fatalln("error:", err)
 	}
 	TestQueries = New(conn)
 	os.Exit(m.Run())

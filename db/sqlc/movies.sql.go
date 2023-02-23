@@ -7,24 +7,30 @@ package db
 
 import (
 	"context"
+	"time"
 )
 
 const createMovie = `-- name: CreateMovie :one
-INSERT INTO movies(
-title,
-overview,
-release_date,
-poster_url
-) values (
-          "Star Wars",
-          "Star Wars is an American epic space opera multimedia franchise created by George Lucas, which began with the eponymous 1977 film and quickly became a worldwide pop culture phenomenon.",
-          1978-07-21,
-          "https://m.media-amazon.com/images/I/A1wnJQFI82L.jpg"
-         ) RETURNING id, title, overview, release_date, poster_url
+INSERT INTO
+    movies (title, overview, release_date, poster_url)
+VALUES
+    ($1, $2, $3, $4) RETURNING id, title, overview, release_date, poster_url
 `
 
-func (q *Queries) CreateMovie(ctx context.Context) (Movie, error) {
-	row := q.db.QueryRowContext(ctx, createMovie)
+type CreateMovieParams struct {
+	Title       string    `json:"title"`
+	Overview    string    `json:"overview"`
+	ReleaseDate time.Time `json:"release_date"`
+	PosterUrl   string    `json:"poster_url"`
+}
+
+func (q *Queries) CreateMovie(ctx context.Context, arg CreateMovieParams) (Movie, error) {
+	row := q.db.QueryRowContext(ctx, createMovie,
+		arg.Title,
+		arg.Overview,
+		arg.ReleaseDate,
+		arg.PosterUrl,
+	)
 	var i Movie
 	err := row.Scan(
 		&i.ID,
@@ -36,30 +42,28 @@ func (q *Queries) CreateMovie(ctx context.Context) (Movie, error) {
 	return i, err
 }
 
-const deleteMovie = `-- name: DeleteMovie :one
-DELETE FROM movies WHERE movies.title = "Star Wars"
-    RETURNING id, title, overview, release_date, poster_url
+const deleteMoive = `-- name: DeleteMoive :exec
+DELETE FROM movies WHERE id = $1
 `
 
-func (q *Queries) DeleteMovie(ctx context.Context) (Movie, error) {
-	row := q.db.QueryRowContext(ctx, deleteMovie)
-	var i Movie
-	err := row.Scan(
-		&i.ID,
-		&i.Title,
-		&i.Overview,
-		&i.ReleaseDate,
-		&i.PosterUrl,
-	)
-	return i, err
+func (q *Queries) DeleteMoive(ctx context.Context, id int32) error {
+	_, err := q.db.ExecContext(ctx, deleteMoive, id)
+	return err
 }
 
-const getMovieDetails = `-- name: GetMovieDetails :one
-SELECT id, title, overview, release_date, poster_url FROM movies WHERE movies.title = "Star Wars"
+const getMovie = `-- name: GetMovie :one
+SELECT
+    id, title, overview, release_date, poster_url
+FROM
+    movies
+WHERE
+        id = $1
+    LIMIT
+  1
 `
 
-func (q *Queries) GetMovieDetails(ctx context.Context) (Movie, error) {
-	row := q.db.QueryRowContext(ctx, getMovieDetails)
+func (q *Queries) GetMovie(ctx context.Context, id int32) (Movie, error) {
+	row := q.db.QueryRowContext(ctx, getMovie, id)
 	var i Movie
 	err := row.Scan(
 		&i.ID,
@@ -72,22 +76,33 @@ func (q *Queries) GetMovieDetails(ctx context.Context) (Movie, error) {
 }
 
 const listMovies = `-- name: ListMovies :many
-SELECT title FROM movies
+SELECT
+    id, title, overview, release_date, poster_url
+FROM
+    movies
+WHERE
+        id > $1
 `
 
-func (q *Queries) ListMovies(ctx context.Context) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listMovies)
+func (q *Queries) ListMovies(ctx context.Context, id int32) ([]Movie, error) {
+	rows, err := q.db.QueryContext(ctx, listMovies, id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []string{}
+	items := []Movie{}
 	for rows.Next() {
-		var title string
-		if err := rows.Scan(&title); err != nil {
+		var i Movie
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Overview,
+			&i.ReleaseDate,
+			&i.PosterUrl,
+		); err != nil {
 			return nil, err
 		}
-		items = append(items, title)
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
