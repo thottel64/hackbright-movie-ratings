@@ -13,7 +13,7 @@ const createUser = `-- name: CreateUser :one
 INSERT INTO
     users (username, password, email)
 VALUES
-    ($1, $2, $3) RETURNING username, password, email
+    ($1, $2, $3) RETURNING id, username, password, email
 `
 
 type CreateUserParams struct {
@@ -25,22 +25,27 @@ type CreateUserParams struct {
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, createUser, arg.Username, arg.Password, arg.Email)
 	var i User
-	err := row.Scan(&i.Username, &i.Password, &i.Email)
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Password,
+		&i.Email,
+	)
 	return i, err
 }
 
 const deleteUser = `-- name: DeleteUser :exec
-DELETE FROM users WHERE username = $1
+DELETE FROM users WHERE id = $1
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, username string) error {
-	_, err := q.db.ExecContext(ctx, deleteUser, username)
+func (q *Queries) DeleteUser(ctx context.Context, id int32) error {
+	_, err := q.db.ExecContext(ctx, deleteUser, id)
 	return err
 }
 
 const getUser = `-- name: GetUser :one
 SELECT
-    username, password, email
+    id, username, password, email
 FROM
     users
 WHERE
@@ -52,12 +57,17 @@ WHERE
 func (q *Queries) GetUser(ctx context.Context, username string) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUser, username)
 	var i User
-	err := row.Scan(&i.Username, &i.Password, &i.Email)
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Password,
+		&i.Email,
+	)
 	return i, err
 }
 
 const listUser = `-- name: ListUser :many
-SELECT username, password, email FROM users
+SELECT id, username, password, email FROM users
                   LIMIT $1 OFFSET $2
 `
 
@@ -75,7 +85,12 @@ func (q *Queries) ListUser(ctx context.Context, arg ListUserParams) ([]User, err
 	items := []User{}
 	for rows.Next() {
 		var i User
-		if err := rows.Scan(&i.Username, &i.Password, &i.Email); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.Password,
+			&i.Email,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

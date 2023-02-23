@@ -1,6 +1,6 @@
 -- name: CreateRating :one
 INSERT INTO
-    ratings (score, movie_id, user_username)
+    ratings (score, movie_id, user_id)
 VALUES
     ($1, $2, $3) RETURNING *;
 
@@ -22,7 +22,7 @@ FROM
 WHERE
         movie_id = $1
 ORDER BY
-    created_at DESC;
+    score DESC;
 
 
 -- name: DeleteRating :exec
@@ -45,6 +45,6 @@ SELECT
 FROM
     ratings
 WHERE
-        user_username = $1
+        user_id = $1
 ORDER BY
-    created_at DESC;
+    score DESC;

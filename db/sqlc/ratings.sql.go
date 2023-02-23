@@ -12,24 +12,24 @@ import (
 
 const createRating = `-- name: CreateRating :one
 INSERT INTO
-    ratings (score, movie_id, user_username)
+    ratings (score, movie_id, user_id)
 VALUES
-    ($1, $2, $3) RETURNING id, score, user_username, movie_id
+    ($1, $2, $3) RETURNING id, score, user_id, movie_id
 `
 
 type CreateRatingParams struct {
-	Score        sql.NullInt32  `json:"score"`
-	MovieID      sql.NullInt32  `json:"movie_id"`
-	UserUsername sql.NullString `json:"user_username"`
+	Score   sql.NullInt32 `json:"score"`
+	MovieID sql.NullInt32 `json:"movie_id"`
+	UserID  sql.NullInt32 `json:"user_id"`
 }
 
 func (q *Queries) CreateRating(ctx context.Context, arg CreateRatingParams) (Rating, error) {
-	row := q.db.QueryRowContext(ctx, createRating, arg.Score, arg.MovieID, arg.UserUsername)
+	row := q.db.QueryRowContext(ctx, createRating, arg.Score, arg.MovieID, arg.UserID)
 	var i Rating
 	err := row.Scan(
 		&i.ID,
 		&i.Score,
-		&i.UserUsername,
+		&i.UserID,
 		&i.MovieID,
 	)
 	return i, err
@@ -49,7 +49,7 @@ func (q *Queries) DeleteRating(ctx context.Context, id int32) error {
 
 const getRating = `-- name: GetRating :one
 SELECT
-    id, score, user_username, movie_id
+    id, score, user_id, movie_id
 FROM
     ratings
 WHERE
@@ -64,7 +64,7 @@ func (q *Queries) GetRating(ctx context.Context, id int32) (Rating, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.Score,
-		&i.UserUsername,
+		&i.UserID,
 		&i.MovieID,
 	)
 	return i, err
@@ -72,13 +72,13 @@ func (q *Queries) GetRating(ctx context.Context, id int32) (Rating, error) {
 
 const listRatingsByMovie = `-- name: ListRatingsByMovie :many
 SELECT
-    id, score, user_username, movie_id
+    id, score, user_id, movie_id
 FROM
     ratings
 WHERE
         movie_id = $1
 ORDER BY
-    created_at DESC
+    score DESC
 `
 
 func (q *Queries) ListRatingsByMovie(ctx context.Context, movieID sql.NullInt32) ([]Rating, error) {
@@ -93,7 +93,7 @@ func (q *Queries) ListRatingsByMovie(ctx context.Context, movieID sql.NullInt32)
 		if err := rows.Scan(
 			&i.ID,
 			&i.Score,
-			&i.UserUsername,
+			&i.UserID,
 			&i.MovieID,
 		); err != nil {
 			return nil, err
@@ -111,17 +111,17 @@ func (q *Queries) ListRatingsByMovie(ctx context.Context, movieID sql.NullInt32)
 
 const listRatingsByUser = `-- name: ListRatingsByUser :many
 SELECT
-    id, score, user_username, movie_id
+    id, score, user_id, movie_id
 FROM
     ratings
 WHERE
-        user_username = $1
+        user_id = $1
 ORDER BY
-    created_at DESC
+    score DESC
 `
 
-func (q *Queries) ListRatingsByUser(ctx context.Context, userUsername sql.NullString) ([]Rating, error) {
-	rows, err := q.db.QueryContext(ctx, listRatingsByUser, userUsername)
+func (q *Queries) ListRatingsByUser(ctx context.Context, userID sql.NullInt32) ([]Rating, error) {
+	rows, err := q.db.QueryContext(ctx, listRatingsByUser, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (q *Queries) ListRatingsByUser(ctx context.Context, userUsername sql.NullSt
 		if err := rows.Scan(
 			&i.ID,
 			&i.Score,
-			&i.UserUsername,
+			&i.UserID,
 			&i.MovieID,
 		); err != nil {
 			return nil, err
@@ -154,7 +154,7 @@ UPDATE
 SET
     score = $1
 WHERE
-        id = $2 RETURNING id, score, user_username, movie_id
+        id = $2 RETURNING id, score, user_id, movie_id
 `
 
 type UpdateRatingParams struct {

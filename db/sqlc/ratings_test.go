@@ -10,10 +10,23 @@ import (
 
 func createRandomRating(t *testing.T) (Rating, error) {
 	rand.Seed(time.Now().Unix())
+	movier, err := createRandomMovie(t)
+	if err != nil {
+		t.Errorf("could not create movie: %v", err)
+	}
+	userr, err := createRandomUser(t)
+	if err != nil {
+		t.Errorf("could not create random user: %v", err)
+	}
 	arg := CreateRatingParams{
 		Score: sql.NullInt32{
-			Int32: int32(rand.Int()),
-			Valid: true,
+			1, true,
+		},
+		MovieID: sql.NullInt32{
+			movier.ID, true,
+		},
+		UserID: sql.NullInt32{
+			userr.ID, true,
 		},
 	}
 
@@ -102,5 +115,110 @@ func TestGetUser(t *testing.T) {
 	}
 	if user2.Username != user1.Username {
 		t.Errorf("test users are not the same. Wanted %v, got %v", user1.Username, user2.Username)
+	}
+}
+func TestGetMovie(t *testing.T) {
+	movie1, err := createRandomMovie(t)
+	if err != nil {
+		t.Errorf("error creating random movie: %v", err)
+	}
+	movie2, err := TestQueries.GetMovie(context.Background(), movie1.ID)
+	if err != nil {
+		t.Errorf("error creating movie: %v", err)
+	}
+	if movie1.Title != movie2.Title {
+		t.Errorf("test movies are not the same. Wanted %v, got %v", movie1.Title, movie2.Title)
+	}
+}
+func TestUpdateRating(t *testing.T) {
+	rating1, err := createRandomRating(t)
+	if err != nil {
+		t.Errorf("error creating random movie: %v", err)
+	}
+	oldscore := rating1.Score.Int32
+	err = TestQueries.UpdateRating(context.Background(), UpdateRatingParams{
+		Score: sql.NullInt32{
+			Int32: 8,
+			Valid: true,
+		},
+		ID: 1,
+	})
+
+	if rating1.Score.Int32 != oldscore {
+		t.Errorf("error, score was not updated. Got %v, wanted %v", oldscore, rating1.Score.Int32)
+	}
+}
+func TestListUser(t *testing.T) {
+	list1, err := TestQueries.ListUser(context.Background(), ListUserParams{
+		Limit:  1,
+		Offset: 1,
+	})
+	if err != nil {
+		t.Errorf("error listing users")
+	}
+	for _, user := range list1 {
+		if user.Username == "" {
+			t.Errorf("list failed. user list is empty")
+		}
+	}
+}
+func TestListMovies(t *testing.T) {
+	list1, err := TestQueries.ListMovies(context.Background(), 1)
+	if err != nil {
+		t.Errorf("unable to get list of movies from testqueries.ListMovies")
+	}
+	for _, values := range list1 {
+		if values.ID < 1 {
+			t.Errorf("list failed. Movie list is empty")
+		}
+		if values.ID == int32(len(list1)) {
+			break
+		}
+	}
+}
+func TestListRatingsByUser(t *testing.T) {
+	list1, err := TestQueries.ListRatingsByUser(context.Background(), sql.NullInt32{
+		Int32: 2,
+		Valid: true,
+	})
+	if err != nil {
+		t.Errorf("error creating list: %v", err)
+	}
+	for _, rating := range list1 {
+		if rating.MovieID.Int32 == 0 {
+			t.Errorf("error generating list. Wanted %v, got %v", rating.MovieID.Int32, 0)
+		}
+	}
+}
+func TestListRatingsByMovie(t *testing.T) {
+	list1, err := TestQueries.ListRatingsByMovie(context.Background(), sql.NullInt32{
+		Int32: 1,
+		Valid: true,
+	})
+	if err != nil {
+		t.Errorf("error creating list: %v", err)
+	}
+	for _, rating := range list1 {
+		if rating.ID == 0 {
+			t.Errorf("empty list")
+		}
+	}
+}
+func TestDeleteMovie(t *testing.T) {
+	err := TestQueries.DeleteMovie(context.Background(), 1)
+	if err != nil {
+		t.Errorf("error deleting movie: %v", err)
+	}
+}
+func TestDeleteRating(t *testing.T) {
+	err := TestQueries.DeleteRating(context.Background(), 1)
+	if err != nil {
+		t.Errorf("error deleting movie: %v", err)
+	}
+}
+func TestDeleteUser(t *testing.T) {
+	err := TestQueries.DeleteUser(context.Background(), 1)
+	if err != nil {
+		t.Errorf("error deleting user: %v", err)
 	}
 }

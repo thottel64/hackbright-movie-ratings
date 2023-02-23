@@ -21,8 +21,8 @@ SELECT
 FROM
     movies
 WHERE
-        id > $1;
+        id >= $1;
 
 
--- name: DeleteMoive :exec
+-- name: DeleteMovie :exec
 DELETE FROM movies WHERE id = $1;

@@ -18,13 +18,14 @@ type Movie struct {
 }
 
 type Rating struct {
-	ID           int32          `json:"id"`
-	Score        sql.NullInt32  `json:"score"`
-	UserUsername sql.NullString `json:"user_username"`
-	MovieID      sql.NullInt32  `json:"movie_id"`
+	ID      int32         `json:"id"`
+	Score   sql.NullInt32 `json:"score"`
+	UserID  sql.NullInt32 `json:"user_id"`
+	MovieID sql.NullInt32 `json:"movie_id"`
 }
 
 type User struct {
+	ID       int32  `json:"id"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Email    string `json:"email"`

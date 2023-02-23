@@ -42,12 +42,12 @@ func (q *Queries) CreateMovie(ctx context.Context, arg CreateMovieParams) (Movie
 	return i, err
 }
 
-const deleteMoive = `-- name: DeleteMoive :exec
+const deleteMovie = `-- name: DeleteMovie :exec
 DELETE FROM movies WHERE id = $1
 `
 
-func (q *Queries) DeleteMoive(ctx context.Context, id int32) error {
-	_, err := q.db.ExecContext(ctx, deleteMoive, id)
+func (q *Queries) DeleteMovie(ctx context.Context, id int32) error {
+	_, err := q.db.ExecContext(ctx, deleteMovie, id)
 	return err
 }
 
@@ -81,7 +81,7 @@ SELECT
 FROM
     movies
 WHERE
-        id > $1
+        id >= $1
 `
 
 func (q *Queries) ListMovies(ctx context.Context, id int32) ([]Movie, error) {
